@@ -36,12 +36,8 @@ const userSchema= new mongoose.Schema({
         type:String,
         trim:true,
         required:true,
-        minlength:8,
-        maxlength:20,
-        match:/^(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/
+        match:/^(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,20}$/
     }
-
-
 },{timestamps:true});
 
 // remove password before sending data to user
@@ -54,23 +50,17 @@ userSchema.methods.toJSON=function(){
 
 userSchema.pre("save",async function(next){
     const user=this;
-        console.log(this)
     if(user.password && user.isModified('password')){
         user.password=await bcrypt.hash(user.password,bcrypt.genSaltSync(8));
     }
     next();
 });
 userSchema.pre("findOneAndUpdate", async function(next){
-    const user=this._update;
-    console.log(this)
-
-    if(user.password && user.isModified('password')){
-        user.password=await bcrypt.hash(user.password,bcrypt.genSaltSync(8));
-    console.log(user)
-
+    const update=this._update;
+    if(update.password){
+        update.password= await bcrypt.hash(update.password,bcrypt.genSaltSync(8));
     }
     next();
-
 } );
 
 const User=mongoose.model("user",userSchema);
