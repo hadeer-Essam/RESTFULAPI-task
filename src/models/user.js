@@ -1,6 +1,7 @@
 const mongoose= require("mongoose");
 const validator= require("validator");
 const bcrypt= require("bcrypt");
+const jwt= require("jsonwebtoken");
 
 // my validating schema
 const userSchema= new mongoose.Schema({
@@ -17,7 +18,6 @@ const userSchema= new mongoose.Schema({
                 throw new Error("Enter a valid age");
             }
         }
-
     },
     email:{
         type:String,
@@ -29,7 +29,6 @@ const userSchema= new mongoose.Schema({
             if(!validator.isEmail(value)){
                 throw new Error("not a valid email");
             }
-
         }
     },
     password:{
@@ -37,7 +36,13 @@ const userSchema= new mongoose.Schema({
         trim:true,
         required:true,
         match:/^(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,20}$/
-    }
+    },
+    tokens:[{
+        token:{
+            type:String,
+            required:true
+        }
+    }]
 },{timestamps:true});
 
 // remove password before sending data to user
@@ -47,21 +52,33 @@ userSchema.methods.toJSON=function(){
     delete user.password;
     return user
 }
+userSchema.methods.generateAuthToken = async function () {
+    const user = this;
+    const token = jwt.sign({ _id: user._id.toString() }, 'thisismynewcourse');
+    user.tokens=user.tokens.concat({ token:token });
+    await user.save({validateModifiedOnly:true});
+    return token
+}
 
-userSchema.pre("save",async function(next){
-    const user=this;
-    if(user.password && user.isModified('password')){
-        user.password=await bcrypt.hash(user.password,bcrypt.genSaltSync(8));
+
+
+// check if user found or not to allow him to login 
+userSchema.statics.findByCredentials=async function(email,password){
+    const user= await User.findOne({email});
+    if(!user) throw new Error ("wrong email try again!");
+    const checkPassword=await bcrypt.compare(password,user.password);
+    if(!checkPassword) throw new Error ("wrong password try again!");
+    return user;
+}
+
+// hash password before saving
+userSchema.pre('save', async function (next) {
+    const user = this
+
+    if (user.password && user.isModified('password')) {
+        user.password = await bcrypt.hash(user.password, 8)
     }
     next();
-});
-userSchema.pre("findOneAndUpdate", async function(next){
-    const update=this._update;
-    if(update.password){
-        update.password= await bcrypt.hash(update.password,bcrypt.genSaltSync(8));
-    }
-    next();
-} );
-
+})
 const User=mongoose.model("user",userSchema);
 module.exports=User;

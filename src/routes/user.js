@@ -81,9 +81,18 @@ router.get("/user/:id",async (req,res)=>{
 // update user info
 router.patch("/user/update/:id",async (req,res)=>{
     const id= req.params.id
-
+    const allowedProperty=["name","email","age"];
+    const updates=Object.keys(req.body);
+    const isValid=updates.every((update)=> allowedProperty.includes(update));
+    if(!isValid){
+        return res.status(400).send({
+                status:0,
+                data:"",
+                error:"invalid property update"
+        });
+    }
     try{
-    const user=await User.findOneAndUpdate({_id:id},req.body,{useFindAndModify:false,new:true,runValidators:true});
+    const user=await User.findByIdAndUpdate(id,req.body,{runValidators:true,new:true,useFindAndModify:false});
     if(!user){
             return  res.status(404).send({
                 status:0,
@@ -109,9 +118,19 @@ router.patch("/user/update/:id",async (req,res)=>{
 // update password
 router.patch("/user/updatePassword/:id",async (req,res)=>{
     const id= req.params.id
+    const allowedProperty="password";
+    const updates=Object.keys(req.body);
+    const isValid=updates.every((update)=> allowedProperty==update);
+    if(!isValid){
+        return res.status(400).send({
+                status:0,
+                data:"",
+                error:"invalid property update"
+            });
+    }
 
     try{
-    const user=await User.findOneAndUpdate({_id:id},req.body,{useFindAndModify:false,new:true});
+    const user=await User.findById(id);
     if(!user){
             return  res.status(404).send({
                 status:0,
@@ -119,6 +138,9 @@ router.patch("/user/updatePassword/:id",async (req,res)=>{
                 error:"no user with this id"
             });   
         }
+    user.password=req.body.password;
+    await user.save();
+
         res.status(200).send({
             status: 1,
             data: "password updated",
@@ -134,6 +156,25 @@ router.patch("/user/updatePassword/:id",async (req,res)=>{
 
 });
 
+router.post("/users/login",async(req,res)=>{
+    try{
+        const user=await User.findByCredentials(req.body.email,req.body.password);
+       const token=await user.generateAuthToken();
+
+        res.status(200).send({
+            status: 1,
+            data: user,
+            lastToken:token,
+            error: ""
+        });
+    }catch(err){
+        res.status(400).send({
+            status:0,
+            data:"",
+            error:err.message
+        });
+    }
+})
 
 module.exports=router;
 
