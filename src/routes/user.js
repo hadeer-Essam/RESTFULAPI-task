@@ -92,14 +92,8 @@ router.patch("/user/updateInfo",auth,async (req,res)=>{
         });
     }
     try{
-    const updatedUser=await User.findByIdAndUpdate(user._id,req.body,{runValidators:true,new:true,useFindAndModify:false});
-    if(!updatedUser){
-            return  res.status(404).send({
-                status:0,
-                data:"",
-                error:"no user with this id"
-            });   
-        }
+   updates.forEach((update)=>{ user[update]=req.body[update];});
+    await user.save({validateModifiedOnly:true})
         res.status(200).send({
             status: 1,
             data: updatedUser,
@@ -208,6 +202,7 @@ router.post("/user/logout/all",auth,async (req,res)=>{
         });
     }
 });
+router.post("/user/delete/me")
 
 module.exports=router;
 
