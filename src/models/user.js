@@ -52,6 +52,8 @@ userSchema.methods.toJSON=function(){
     delete user.password;
     return user
 }
+
+// generate tokens when login
 userSchema.methods.generateAuthToken = async function () {
     const user = this;
     const token = jwt.sign({ _id: user._id.toString() }, 'thisismynewcourse');

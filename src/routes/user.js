@@ -1,8 +1,9 @@
 const express= require("express");
 const User= require("../models/user");
+const auth= require("../middleware/auth");
 const router = new express.Router();
 
-// add new user to db
+// add new user to db(sign up)
 router.post('/user/add',(req,res)=>{
     const user = new User(req.body);
     
@@ -23,7 +24,7 @@ router.post('/user/add',(req,res)=>{
 });
 
 // get all users
-router.get("/user/all",async (req,res)=>{
+router.get("/user/all",auth,async (req,res)=>{
 
     try{
         const users=await User.find({});
@@ -50,9 +51,8 @@ router.get("/user/all",async (req,res)=>{
 
 });
 // get user by id
-router.get("/user/:id",async (req,res)=>{
+router.get("/user/:id",auth,async (req,res)=>{
     const id= req.params.id
-
     try{
         const user=await User.findById(id);
         if(!user){
@@ -79,8 +79,8 @@ router.get("/user/:id",async (req,res)=>{
 });
 
 // update user info
-router.patch("/user/update/:id",async (req,res)=>{
-    const id= req.params.id
+router.patch("/user/updateInfo",auth,async (req,res)=>{
+    const user=req.user
     const allowedProperty=["name","email","age"];
     const updates=Object.keys(req.body);
     const isValid=updates.every((update)=> allowedProperty.includes(update));
@@ -92,8 +92,8 @@ router.patch("/user/update/:id",async (req,res)=>{
         });
     }
     try{
-    const user=await User.findByIdAndUpdate(id,req.body,{runValidators:true,new:true,useFindAndModify:false});
-    if(!user){
+    const updatedUser=await User.findByIdAndUpdate(user._id,req.body,{runValidators:true,new:true,useFindAndModify:false});
+    if(!updatedUser){
             return  res.status(404).send({
                 status:0,
                 data:"",
@@ -102,7 +102,7 @@ router.patch("/user/update/:id",async (req,res)=>{
         }
         res.status(200).send({
             status: 1,
-            data: user,
+            data: updatedUser,
             error: ""
         });
     }catch(err){
@@ -116,8 +116,8 @@ router.patch("/user/update/:id",async (req,res)=>{
 });
 
 // update password
-router.patch("/user/updatePassword/:id",async (req,res)=>{
-    const id= req.params.id
+router.patch("/user/updatePassword",auth,async (req,res)=>{
+    const user=req.user;
     const allowedProperty="password";
     const updates=Object.keys(req.body);
     const isValid=updates.every((update)=> allowedProperty==update);
@@ -130,14 +130,7 @@ router.patch("/user/updatePassword/:id",async (req,res)=>{
     }
 
     try{
-    const user=await User.findById(id);
-    if(!user){
-            return  res.status(404).send({
-                status:0,
-                data:"",
-                error:"no user with this id"
-            });   
-        }
+   
     user.password=req.body.password;
     await user.save();
 
@@ -156,7 +149,7 @@ router.patch("/user/updatePassword/:id",async (req,res)=>{
 
 });
 
-router.post("/users/login",async(req,res)=>{
+router.post("/user/login",async(req,res)=>{
     try{
         const user=await User.findByCredentials(req.body.email,req.body.password);
        const token=await user.generateAuthToken();
@@ -174,7 +167,48 @@ router.post("/users/login",async(req,res)=>{
             error:err.message
         });
     }
-})
+});
+
+router.post("/user/logout",auth,async (req,res)=>{
+    const user=req.user;
+    const token=req.token;
+    try{
+        const index=user.tokens.indexOf(token);
+        user.tokens.splice(index,1);
+        await user.save({validateModifiedOnly:true});
+        res.status(200).send({
+            status: 1,
+            data: " succefully sign out",
+            error: ""
+        });
+    
+    }catch(err){
+        res.status(500).send({
+            status: 0,
+            error: err.message
+        });
+    }
+});
+
+router.post("/user/logout/all",auth,async (req,res)=>{
+    const user=req.user;
+    const token=req.token;
+    try{
+        user.tokens=[];
+        await user.save({validateModifiedOnly:true});
+        res.status(200).send({
+            status: 1,
+            data: " succefully sign out all",
+            error: ""
+        });
+    
+    }catch(err){
+        res.status(500).send({
+            status: 0,
+            error: err.message
+        });
+    }
+});
 
 module.exports=router;
 
