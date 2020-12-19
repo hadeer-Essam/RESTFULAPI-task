@@ -192,7 +192,6 @@ router.post("/user/logout",auth,async (req,res)=>{
 
 router.post("/user/logout/all",auth,async (req,res)=>{
     const user=req.user;
-    const token=req.token;
     try{
         user.tokens=[];
         await user.save({validateModifiedOnly:true});

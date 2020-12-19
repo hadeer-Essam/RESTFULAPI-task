@@ -50,6 +50,7 @@ userSchema.methods.toJSON=function(){
     let user= this;
     user=user.toObject();
     delete user.password;
+    delete user.tokens;
     return user
 }
 
